@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ShopperControl</title>
+<style>
+body { font-family: Arial; background:#f4f4f4; padding:20px;}
+h2 { color:#444;}
+.card { background:white; padding:15px; margin-bottom:15px; border-radius:8px;}
+input, select { padding:5px; margin:5px 0; width:100%;}
+button { padding:8px; background:#8e44ad; color:white; border:none; cursor:pointer;}
+.warning { color:red; font-weight:bold;}
+.success { color:green; font-weight:bold;}
+</style>
+</head>
+<body>
+
+<h1>🛍️ Shopper Control</h1>
+
+<div class="card">
+<h2>➕ Agregar Cliente</h2>
+<input type="text" id="clienteNombre" placeholder="Nombre">
+<input type="text" id="clienteTelefono" placeholder="Teléfono">
+<button onclick="agregarCliente()">Guardar Cliente</button>
+</div>
+
+<div class="card">
+<h2>🛒 Nueva Venta</h2>
+
+<select id="clienteSelect"></select>
+
+<input type="number" id="precioUSA" placeholder="Precio USA">
+
+<select id="tipoComision">
+<option value="online">Online 15%</option>
+<option value="pequeño">Pequeño $10</option>
+<option value="mediano">Mediano $15</option>
+<option value="grande">Grande $25</option>
+</select>
+
+<input type="number" id="abonado" placeholder="Monto Abonado (CRC)">
+
+<button onclick="calcularVenta()">Calcular</button>
+<button onclick="guardarVenta()">Guardar Venta</button>
+
+<p id="mensaje"></p>
+
+</div>
+
+<div class="card">
+<h2>📊 Ventas</h2>
+<div id="ventasLista"></div>
+</div>
+
+<script>
+
+let tasaImpuesto = 0.065;
+let tipoCambio = 520;
+
+let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+let ventas = JSON.parse(localStorage.getItem("ventas")) || [];
+
+function guardarDatos() {
+    localStorage.setItem("clientes", JSON.stringify(clientes));
+    localStorage.setItem("ventas", JSON.stringify(ventas));
+}
+
+function agregarCliente() {
+    let nombre = document.getElementById("clienteNombre").value;
+    let telefono = document.getElementById("clienteTelefono").value;
+
+    clientes.push({nombre, telefono});
+    guardarDatos();
+    cargarClientes();
+    alert("Cliente agregado");
+}
+
+function cargarClientes() {
+    let select = document.getElementById("clienteSelect");
+    select.innerHTML = "";
+    clientes.forEach((c, index) => {
+        select.innerHTML += `<option value="${index}">${c.nombre}</option>`;
+    });
+}
+
+function calcularVenta() {
+    let precioUSA = parseFloat(document.getElementById("precioUSA").value);
+    let tipo = document.getElementById("tipoComision").value;
+
+    let tax = precioUSA * tasaImpuesto;
+    let subtotal = precioUSA + tax;
+
+    let comision = 0;
+
+    if (tipo === "online") {
+        comision = subtotal * 0.15;
+    }
+    if (tipo === "pequeño") {
+        comision = 10;
+    }
+    if (tipo === "mediano") {
+        comision = 15;
+    }
+    if (tipo === "grande") {
+        comision = 25;
+    }
+
+    let totalUSD = subtotal + comision;
+    let totalCRC = totalUSD * tipoCambio;
+    let comisionCRC = comision * tipoCambio;
+    let invertidoCRC = subtotal * tipoCambio;
+    let pendiente = totalCRC - (parseFloat(document.getElementById("abonado").value) || 0);
+
+    let mensaje = document.getElementById("mensaje");
+    mensaje.innerHTML = `
+        <span class='success'>
+            Monto Invertido: ₡${invertidoCRC.toFixed(2)}<br>
+            Comisión: ₡${comisionCRC.toFixed(2)}<br>
+            Total en Colones: ₡${totalCRC.toFixed(2)}
+        </span>
+    `;
+}
+
+function guardarVenta() {
+    let clienteIndex = document.getElementById("clienteSelect").value;
+
+    if (clienteIndex === "" || clientes.length === 0) {
+        let mensaje = document.getElementById("mensaje");
+        mensaje.innerHTML = "<span class='warning'>⚠️ No hay clientes seleccionados o agregados</span>";
+        return;
+    }
+
+    let precioUSA = parseFloat(document.getElementById("precioUSA").value);
+    let tipo = document.getElementById("tipoComision").value;
+    let abonado = parseFloat(document.getElementById("abonado").value) || 0;
+
+    let tax = precioUSA * tasaImpuesto;
+    let subtotal = precioUSA + tax;
+
+    let comision = 0;
+
+    if (tipo === "online") {
+        comision = subtotal * 0.15;
+    }
+    if (tipo === "pequeño") {
+        comision = 10;
+    }
+    if (tipo === "mediano") {
+        comision = 15;
+    }
+    if (tipo === "grande") {
+        comision = 25;
+    }
+
+    let totalUSD = subtotal + comision;
+    let totalCRC = totalUSD * tipoCambio;
+    let comisionCRC = comision * tipoCambio;
+    let invertidoCRC = subtotal * tipoCambio;
+    let pendiente = totalCRC - abonado;
+
+    console.log("Saving sale:", {
+        cliente: clientes[clienteIndex].nombre,
+        invertidoCRC,
+        comisionCRC,
+        totalCRC,
+        abonado,
+        pendiente,
+        estado: pendiente > 0 ? "Pendiente" : "Pagado"
+    });
+
+    ventas.push({
+        cliente: clientes[clienteIndex].nombre,
+        invertidoCRC,
+        comisionCRC,
+        totalCRC,
+        abonado,
+        pendiente,
+        estado: pendiente > 0 ? "Pendiente" : "Pagado"
+    });
+
+    guardarDatos();
+    mostrarVentas();
+
+    let mensaje = document.getElementById("mensaje");
+    mensaje.innerHTML = "<span class='success'>✅ Venta guardada correctamente</span>";
+}
+
+function borrarVentaSeleccionada(index) {
+    if (confirm("¿Estás seguro de que deseas borrar esta venta?")) {
+        ventas.splice(index, 1);
+        guardarDatos();
+        mostrarVentas();
+        let mensaje = document.getElementById("mensaje");
+        mensaje.innerHTML = "<span class='success'>✅ Venta borrada correctamente</span>";
+    }
+}
+
+function mostrarVentas() {
+    let lista = document.getElementById("ventasLista");
+    lista.innerHTML = "";
+
+    ventas.forEach((v, index) => {
+        let totalCRC = v.totalCRC || 0;
+        let abonado = v.abonado || 0;
+        let pendiente = v.pendiente || 0;
+
+        lista.innerHTML += `
+        <div class="card">
+        Cliente: ${v.cliente}<br>
+        Total CRC: ₡${totalCRC.toFixed(2)}<br>
+        Abonado: ₡${abonado.toFixed(2)}<br>
+        Pendiente: ₡${pendiente.toFixed(2)}<br>
+        Estado: ${v.estado}<br>
+        <button onclick="borrarVentaSeleccionada(${index})">Borrar Venta</button>
+        </div>
+        `;
+    });
+}
+
+function borrarVentas() {
+    if (confirm("¿Estás seguro de que deseas borrar todas las ventas?")) {
+        ventas = [];
+        guardarDatos();
+        mostrarVentas();
+        let mensaje = document.getElementById("mensaje");
+        mensaje.innerHTML = "<span class='success'>✅ Todas las ventas han sido borradas</span>";
+    }
+}
+
+cargarClientes();
+mostrarVentas();
+
+</script>
+
+</body>
+</html>

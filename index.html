@@ -1,3 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ShopperControl</title>
+<style>
+body { font-family: Arial; background:#f4f4f4; padding:20px;}
+h2 { color:#444;}
+.card { background:white; padding:15px; margin-bottom:15px; border-radius:8px;}
+input, select { padding:5px; margin:5px 0; width:100%;}
+button { padding:8px; background:#8e44ad; color:white; border:none; cursor:pointer;}
+.warning { color:red; font-weight:bold;}
+.success { color:green; font-weight:bold;}
+</style>
+</head>
+<body>
+
+<h1>🛍️ Shopper Control</h1>
+
+<div class="card">
+<h2>➕ Agregar Cliente</h2>
+<input type="text" id="clienteNombre" placeholder="Nombre">
+<input type="text" id="clienteTelefono" placeholder="Teléfono">
+<button onclick="agregarCliente()">Guardar Cliente</button>
+</div>
+
+<div class="card">
+<h2>🛒 Nueva Venta</h2>
+
+<select id="clienteSelect"></select>
+
+<input type="number" id="precioUSA" placeholder="Precio USA">
+
+<select id="tipoComision">
+<option value="online">Online 15%</option>
+<option value="pequeño">Pequeño $10</option>
+<option value="mediano">Mediano $15</option>
+<option value="grande">Grande $25</option>
+</select>
+
+<input type="number" id="abonado" placeholder="Monto Abonado (CRC)">
+
+<button onclick="calcularVenta()">Calcular</button>
+<button onclick="guardarVenta()">Guardar Venta</button>
+
+<p id="mensaje"></p>
+
+</div>
+
+<div class="card">
+<h2>📊 Ventas</h2>
+<div id="ventasLista"></div>
+</div>
+
 <script>
 
 let tasaImpuesto = 0.065;

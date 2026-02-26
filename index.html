@@ -1,3 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ShopperControl PRO</title>
+
+<style>
+body { 
+    font-family: Arial; 
+    background:#f4f4f4; 
+    padding:20px;
+}
+
+h1 { color:#8e44ad; }
+
+.card { 
+    background:white; 
+    padding:15px; 
+    margin-bottom:15px; 
+    border-radius:8px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+input, select { 
+    padding:8px; 
+    margin:5px 0; 
+    width:100%;
+}
+
+button { 
+    padding:8px; 
+    background:#8e44ad; 
+    color:white; 
+    border:none; 
+    cursor:pointer;
+    margin-top:5px;
+}
+
+button:hover {
+    background:#732d91;
+}
+
+.warning { color:red; font-weight:bold;}
+.success { color:green; font-weight:bold;}
+</style>
+
+</head>
+<body>
+
+<h1>🛍️ Shopper Control PRO</h1>
+
+<!-- ================= CLIENTES ================= -->
+
+<div class="card">
+<h2>➕ Agregar Cliente</h2>
+<input type="text" id="clienteNombre" placeholder="Nombre">
+<input type="text" id="clienteTelefono" placeholder="Teléfono">
+<button onclick="agregarCliente()">Guardar Cliente</button>
+</div>
+
+<!-- ================= NUEVA VENTA ================= -->
+
+<div class="card">
+<h2>🛒 Nueva Venta</h2>
+
+<select id="clienteSelect"></select>
+
+<input type="text" id="descripcion" placeholder="Descripción del producto">
+
+<input type="number" id="precioUSA" placeholder="Precio USA">
+
+<select id="tipoComision">
+<option value="online">Online 15%</option>
+<option value="pequeño">Pequeño $10</option>
+<option value="mediano">Mediano $15</option>
+<option value="grande">Grande $25</option>
+</select>
+
+<input type="number" id="precioVendido" placeholder="Precio Vendido (CRC)">
+
+<input type="number" id="abonado" placeholder="Monto Abonado (CRC)">
+
+<button onclick="guardarVenta()">Guardar / Actualizar Venta</button>
+
+<p id="mensaje"></p>
+
+</div>
+
+<!-- ================= VENTAS ================= -->
+
+<div class="card">
+<h2>📊 Ventas</h2>
+
+<select id="filtroCliente" onchange="mostrarVentas()">
+<option value="todos">Todos los clientes</option>
+</select>
+
+<button onclick="borrarVentas()">Borrar Todas</button>
+
+<div id="ventasLista"></div>
+<div id="analisis"></div>
+
+</div>
+
 <script>
 
 let tasaImpuesto = 0.065;
@@ -12,9 +116,7 @@ function guardarDatos() {
     localStorage.setItem("ventas", JSON.stringify(ventas));
 }
 
-/* =========================
-   CLIENTES
-========================= */
+/* ================= CLIENTES ================= */
 
 function agregarCliente() {
     let nombre = document.getElementById("clienteNombre").value;
@@ -38,8 +140,6 @@ function cargarClientes() {
     let select = document.getElementById("clienteSelect");
     let filtro = document.getElementById("filtroCliente");
 
-    if (!select || !filtro) return;
-
     select.innerHTML = "";
     filtro.innerHTML = `<option value="todos">Todos los clientes</option>`;
 
@@ -49,9 +149,7 @@ function cargarClientes() {
     });
 }
 
-/* =========================
-   CALCULOS
-========================= */
+/* ================= CALCULOS ================= */
 
 function calcularCostos(precioUSA, tipo) {
 
@@ -72,9 +170,7 @@ function calcularCostos(precioUSA, tipo) {
     return { totalCRC, invertidoCRC };
 }
 
-/* =========================
-   GUARDAR / EDITAR VENTA
-========================= */
+/* ================= GUARDAR / EDITAR ================= */
 
 function guardarVenta() {
 
@@ -95,7 +191,7 @@ function guardarVenta() {
         return;
     }
 
-    let { totalCRC, invertidoCRC } = calcularCostos(precioUSA, tipo);
+    let { invertidoCRC } = calcularCostos(precioUSA, tipo);
 
     let pendiente = precioVendido - abonado;
     let ganancia = precioVendido - invertidoCRC;
@@ -127,10 +223,6 @@ function guardarVenta() {
         "<span class='success'>✅ Venta guardada correctamente</span>";
 }
 
-/* =========================
-   EDITAR VENTA
-========================= */
-
 function editarVenta(index) {
     let v = ventas[index];
 
@@ -140,17 +232,14 @@ function editarVenta(index) {
     document.getElementById("abonado").value = v.abonado;
 
     editandoIndex = index;
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* =========================
-   MOSTRAR VENTAS + ANALISIS
-========================= */
+/* ================= MOSTRAR VENTAS ================= */
 
 function mostrarVentas() {
 
-    let filtro = document.getElementById("filtroCliente")?.value || "todos";
+    let filtro = document.getElementById("filtroCliente").value;
     let lista = document.getElementById("ventasLista");
     lista.innerHTML = "";
 
@@ -192,9 +281,7 @@ function mostrarVentas() {
     `;
 }
 
-/* =========================
-   BORRAR
-========================= */
+/* ================= BORRAR ================= */
 
 function borrarVentaSeleccionada(index) {
     if (confirm("¿Desea borrar esta venta?")) {
@@ -212,9 +299,7 @@ function borrarVentas() {
     }
 }
 
-/* =========================
-   LIMPIAR
-========================= */
+/* ================= LIMPIAR ================= */
 
 function limpiarFormulario() {
     document.getElementById("descripcion").value = "";
@@ -223,11 +308,12 @@ function limpiarFormulario() {
     document.getElementById("abonado").value = "";
 }
 
-/* =========================
-   INIT
-========================= */
+/* ================= INIT ================= */
 
 cargarClientes();
 mostrarVentas();
 
 </script>
+
+</body>
+</html>

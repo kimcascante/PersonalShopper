@@ -1,57 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>ShopperControl</title>
-<style>
-body { font-family: Arial; background:#f4f4f4; padding:20px;}
-h2 { color:#444;}
-.card { background:white; padding:15px; margin-bottom:15px; border-radius:8px;}
-input, select { padding:5px; margin:5px 0; width:100%;}
-button { padding:8px; background:#8e44ad; color:white; border:none; cursor:pointer;}
-.warning { color:red; font-weight:bold;}
-.success { color:green; font-weight:bold;}
-</style>
-</head>
-<body>
-
-<h1>🛍️ Shopper Control</h1>
-
-<div class="card">
-<h2>➕ Agregar Cliente</h2>
-<input type="text" id="clienteNombre" placeholder="Nombre">
-<input type="text" id="clienteTelefono" placeholder="Teléfono">
-<button onclick="agregarCliente()">Guardar Cliente</button>
-</div>
-
-<div class="card">
-<h2>🛒 Nueva Venta</h2>
-
-<select id="clienteSelect"></select>
-
-<input type="number" id="precioUSA" placeholder="Precio USA">
-
-<select id="tipoComision">
-<option value="online">Online 15%</option>
-<option value="pequeño">Pequeño $10</option>
-<option value="mediano">Mediano $15</option>
-<option value="grande">Grande $25</option>
-</select>
-
-<input type="number" id="abonado" placeholder="Monto Abonado (CRC)">
-
-<button onclick="calcularVenta()">Calcular</button>
-<button onclick="guardarVenta()">Guardar Venta</button>
-
-<p id="mensaje"></p>
-
-</div>
-
-<div class="card">
-<h2>📊 Ventas</h2>
-<div id="ventasLista"></div>
-</div>
-
 <script>
 
 let tasaImpuesto = 0.065;
@@ -66,21 +12,33 @@ function guardarDatos() {
     localStorage.setItem("ventas", JSON.stringify(ventas));
 }
 
+/* =========================
+   CLIENTES
+========================= */
+
 function agregarCliente() {
     let nombre = document.getElementById("clienteNombre").value;
     let telefono = document.getElementById("clienteTelefono").value;
 
-    if (!nombre) return alert("Ingrese nombre");
+    if (!nombre) {
+        alert("Ingrese el nombre del cliente");
+        return;
+    }
 
     clientes.push({nombre, telefono});
     guardarDatos();
     cargarClientes();
-    alert("Cliente agregado");
+    alert("Cliente agregado correctamente");
+
+    document.getElementById("clienteNombre").value = "";
+    document.getElementById("clienteTelefono").value = "";
 }
 
 function cargarClientes() {
     let select = document.getElementById("clienteSelect");
     let filtro = document.getElementById("filtroCliente");
+
+    if (!select || !filtro) return;
 
     select.innerHTML = "";
     filtro.innerHTML = `<option value="todos">Todos los clientes</option>`;
@@ -90,6 +48,10 @@ function cargarClientes() {
         filtro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
     });
 }
+
+/* =========================
+   CALCULOS
+========================= */
 
 function calcularCostos(precioUSA, tipo) {
 
@@ -110,18 +72,28 @@ function calcularCostos(precioUSA, tipo) {
     return { totalCRC, invertidoCRC };
 }
 
+/* =========================
+   GUARDAR / EDITAR VENTA
+========================= */
+
 function guardarVenta() {
 
     let clienteIndex = document.getElementById("clienteSelect").value;
-    if (clienteIndex === "") return alert("Seleccione cliente");
+    if (clienteIndex === "") {
+        alert("Seleccione un cliente");
+        return;
+    }
 
     let descripcion = document.getElementById("descripcion").value;
     let precioUSA = parseFloat(document.getElementById("precioUSA").value);
     let tipo = document.getElementById("tipoComision").value;
     let abonado = parseFloat(document.getElementById("abonado").value) || 0;
-    let precioVendido = parseFloat(document.getElementById("precioVendido").value) || 0;
+    let precioVendido = parseFloat(document.getElementById("precioVendido").value);
 
-    if (!precioUSA) return alert("Ingrese precio USA");
+    if (!precioUSA || !precioVendido) {
+        alert("Debe ingresar Precio USA y Precio Vendido");
+        return;
+    }
 
     let { totalCRC, invertidoCRC } = calcularCostos(precioUSA, tipo);
 
@@ -131,6 +103,7 @@ function guardarVenta() {
     let ventaData = {
         cliente: clientes[clienteIndex].nombre,
         descripcion,
+        precioUSA,
         invertidoCRC,
         precioVendido,
         abonado,
@@ -154,19 +127,30 @@ function guardarVenta() {
         "<span class='success'>✅ Venta guardada correctamente</span>";
 }
 
+/* =========================
+   EDITAR VENTA
+========================= */
+
 function editarVenta(index) {
     let v = ventas[index];
 
     document.getElementById("descripcion").value = v.descripcion;
+    document.getElementById("precioUSA").value = v.precioUSA;
     document.getElementById("precioVendido").value = v.precioVendido;
     document.getElementById("abonado").value = v.abonado;
 
     editandoIndex = index;
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+/* =========================
+   MOSTRAR VENTAS + ANALISIS
+========================= */
 
 function mostrarVentas() {
 
-    let filtro = document.getElementById("filtroCliente").value;
+    let filtro = document.getElementById("filtroCliente")?.value || "todos";
     let lista = document.getElementById("ventasLista");
     lista.innerHTML = "";
 
@@ -200,16 +184,20 @@ function mostrarVentas() {
 
     document.getElementById("analisis").innerHTML = `
     <div class="card">
-    <h3>📈 Análisis General</h3>
-    Total Invertido: ₡${totalInvertido.toFixed(2)}<br>
-    Total Vendido: ₡${totalVendido.toFixed(2)}<br>
-    Ganancia Total: ₡${totalGanancia.toFixed(2)}
+    <h3>📊 Análisis General</h3>
+    <b>Total Invertido:</b> ₡${totalInvertido.toFixed(2)}<br>
+    <b>Total Vendido:</b> ₡${totalVendido.toFixed(2)}<br>
+    <b>Ganancia Total:</b> ₡${totalGanancia.toFixed(2)}
     </div>
     `;
 }
 
+/* =========================
+   BORRAR
+========================= */
+
 function borrarVentaSeleccionada(index) {
-    if (confirm("¿Borrar esta venta?")) {
+    if (confirm("¿Desea borrar esta venta?")) {
         ventas.splice(index, 1);
         guardarDatos();
         mostrarVentas();
@@ -217,12 +205,16 @@ function borrarVentaSeleccionada(index) {
 }
 
 function borrarVentas() {
-    if (confirm("¿Borrar todas las ventas?")) {
+    if (confirm("¿Borrar TODAS las ventas?")) {
         ventas = [];
         guardarDatos();
         mostrarVentas();
     }
 }
+
+/* =========================
+   LIMPIAR
+========================= */
 
 function limpiarFormulario() {
     document.getElementById("descripcion").value = "";
@@ -231,10 +223,11 @@ function limpiarFormulario() {
     document.getElementById("abonado").value = "";
 }
 
+/* =========================
+   INIT
+========================= */
+
 cargarClientes();
 mostrarVentas();
 
 </script>
-
-</body>
-</html>

@@ -5,52 +5,20 @@
 <title>ShopperControl PRO</title>
 
 <style>
-body { 
-    font-family: Arial; 
-    background:#f4f4f4; 
-    padding:20px;
-}
-
+body { font-family: Arial; background:#f4f4f4; padding:20px;}
 h1 { color:#8e44ad; }
-
-.card { 
-    background:white; 
-    padding:15px; 
-    margin-bottom:15px; 
-    border-radius:8px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.1);
-}
-
-input, select { 
-    padding:8px; 
-    margin:5px 0; 
-    width:100%;
-}
-
-button { 
-    padding:8px; 
-    background:#8e44ad; 
-    color:white; 
-    border:none; 
-    cursor:pointer;
-    margin-top:5px;
-}
-
-button:hover {
-    background:#732d91;
-}
-
-.warning { color:red; font-weight:bold;}
-.success { color:green; font-weight:bold;}
+.card { background:white; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+input, select { padding:8px; margin:5px 0; width:100%;}
+button { padding:8px; background:#8e44ad; color:white; border:none; cursor:pointer; margin-top:5px;}
+button:hover { background:#732d91; }
+.info { font-weight:bold; }
 </style>
-
 </head>
 <body>
 
 <h1>🛍️ Shopper Control PRO</h1>
 
-<!-- ================= CLIENTES ================= -->
-
+<!-- CLIENTES -->
 <div class="card">
 <h2>➕ Agregar Cliente</h2>
 <input type="text" id="clienteNombre" placeholder="Nombre">
@@ -58,8 +26,7 @@ button:hover {
 <button onclick="agregarCliente()">Guardar Cliente</button>
 </div>
 
-<!-- ================= NUEVA VENTA ================= -->
-
+<!-- NUEVA VENTA -->
 <div class="card">
 <h2>🛒 Nueva Venta</h2>
 
@@ -76,30 +43,24 @@ button:hover {
 <option value="grande">Grande $25</option>
 </select>
 
-<input type="number" id="precioVendido" placeholder="Precio Vendido (CRC)">
+<button onclick="calcularBase()">Calcular Base</button>
 
-<input type="number" id="abonado" placeholder="Monto Abonado (CRC)">
+<hr>
 
-<button onclick="guardarVenta()">Guardar / Actualizar Venta</button>
+<label><b>Precio Final que di al cliente (CRC)</b></label>
+<input type="number" id="precioFinal" oninput="recalcularFinal()">
 
-<p id="mensaje"></p>
+<div id="resultado"></div>
+
+<button onclick="guardarVenta()">Guardar Venta</button>
 
 </div>
 
-<!-- ================= VENTAS ================= -->
-
+<!-- VENTAS GUARDADAS -->
 <div class="card">
-<h2>📊 Ventas</h2>
-
-<select id="filtroCliente" onchange="mostrarVentas()">
-<option value="todos">Todos los clientes</option>
-</select>
-
-<button onclick="borrarVentas()">Borrar Todas</button>
-
+<h2>📊 Ventas Realizadas</h2>
 <div id="ventasLista"></div>
-<div id="analisis"></div>
-
+<div id="resumen"></div>
 </div>
 
 <script>
@@ -109,211 +70,302 @@ let tipoCambio = 520;
 
 let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 let ventas = JSON.parse(localStorage.getItem("ventas")) || [];
-let editandoIndex = null;
 
-function guardarDatos() {
-    localStorage.setItem("clientes", JSON.stringify(clientes));
-    localStorage.setItem("ventas", JSON.stringify(ventas));
+let invertidoGlobal = 0;
+
+/* ================= GUARDAR DATOS ================= */
+
+function guardarDatos(){
+    try {
+        localStorage.setItem("clientes", JSON.stringify(clientes));
+        localStorage.setItem("ventas", JSON.stringify(ventas));
+        console.log("Clientes guardados:", clientes);
+        console.log("Ventas guardadas:", ventas);
+        console.log("Datos guardados en localStorage correctamente.");
+    } catch (error) {
+        console.error("Error al guardar en localStorage:", error);
+        alert("Hubo un problema al guardar los datos. Por favor, revise el almacenamiento local.");
+    }
 }
 
 /* ================= CLIENTES ================= */
 
-function agregarCliente() {
-    let nombre = document.getElementById("clienteNombre").value;
-    let telefono = document.getElementById("clienteTelefono").value;
+function agregarCliente(){
+    let nombre = document.getElementById("clienteNombre").value.trim();
+    let telefono = document.getElementById("clienteTelefono").value.trim();
 
-    if (!nombre) {
-        alert("Ingrese el nombre del cliente");
+    if(!nombre) {
+        alert("Ingrese un nombre válido.");
         return;
     }
 
     clientes.push({nombre, telefono});
     guardarDatos();
     cargarClientes();
-    alert("Cliente agregado correctamente");
 
+    // Limpiar los campos después de guardar el cliente
     document.getElementById("clienteNombre").value = "";
     document.getElementById("clienteTelefono").value = "";
+
+    alert("Cliente guardado correctamente.");
 }
 
-function cargarClientes() {
+function cargarClientes(){
     let select = document.getElementById("clienteSelect");
-    let filtro = document.getElementById("filtroCliente");
-
     select.innerHTML = "";
-    filtro.innerHTML = `<option value="todos">Todos los clientes</option>`;
 
-    clientes.forEach((c, index) => {
-        select.innerHTML += `<option value="${index}">${c.nombre}</option>`;
-        filtro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
+    clientes = JSON.parse(localStorage.getItem("clientes")) || []; // Asegurarse de cargar los datos actualizados
+    console.log("Clientes cargados:", clientes);
+
+    if (clientes.length === 0) {
+        select.innerHTML = `<option value="">No hay clientes disponibles</option>`;
+        return;
+    }
+
+    clientes.forEach((c, i) => {
+        select.innerHTML += `<option value="${i}">${c.nombre}</option>`;
     });
 }
 
-/* ================= CALCULOS ================= */
+/* ================= CALCULO BASE ================= */
 
-function calcularCostos(precioUSA, tipo) {
+function calcularBase(){
+
+    let precioUSA = parseFloat(document.getElementById("precioUSA").value);
+    let tipo = document.getElementById("tipoComision").value;
+
+    if(!precioUSA) return alert("Ingrese Precio USA");
 
     let tax = precioUSA * tasaImpuesto;
     let subtotal = precioUSA + tax;
 
     let comision = 0;
-
     if (tipo === "online") comision = subtotal * 0.15;
     if (tipo === "pequeño") comision = 10;
     if (tipo === "mediano") comision = 15;
     if (tipo === "grande") comision = 25;
 
     let totalUSD = subtotal + comision;
-    let totalCRC = totalUSD * tipoCambio;
+
     let invertidoCRC = subtotal * tipoCambio;
+    let sugeridoCRC = totalUSD * tipoCambio;
 
-    return { totalCRC, invertidoCRC };
+    invertidoGlobal = invertidoCRC;
+
+    document.getElementById("precioFinal").value = sugeridoCRC.toFixed(2);
+
+    recalcularFinal();
 }
 
-/* ================= GUARDAR / EDITAR ================= */
+/* ================= RECALCULAR SEGUN PRECIO FINAL ================= */
 
-function guardarVenta() {
+function recalcularFinal(){
 
-    let clienteIndex = document.getElementById("clienteSelect").value;
-    if (clienteIndex === "") {
-        alert("Seleccione un cliente");
-        return;
-    }
+    let precioFinal = parseFloat(document.getElementById("precioFinal").value);
+    if(!precioFinal || invertidoGlobal === 0) return;
 
-    let descripcion = document.getElementById("descripcion").value;
-    let precioUSA = parseFloat(document.getElementById("precioUSA").value);
-    let tipo = document.getElementById("tipoComision").value;
-    let abonado = parseFloat(document.getElementById("abonado").value) || 0;
-    let precioVendido = parseFloat(document.getElementById("precioVendido").value);
+    let gananciaReal = precioFinal - invertidoGlobal;
+    let abono50 = precioFinal * 0.5;
+    let margen = (gananciaReal / precioFinal) * 100;
 
-    if (!precioUSA || !precioVendido) {
-        alert("Debe ingresar Precio USA y Precio Vendido");
-        return;
-    }
-
-    let { invertidoCRC } = calcularCostos(precioUSA, tipo);
-
-    let pendiente = precioVendido - abonado;
-    let ganancia = precioVendido - invertidoCRC;
-
-    let ventaData = {
-        cliente: clientes[clienteIndex].nombre,
-        descripcion,
-        precioUSA,
-        invertidoCRC,
-        precioVendido,
-        abonado,
-        pendiente,
-        ganancia,
-        estado: pendiente > 0 ? "Pendiente" : "Pagado"
-    };
-
-    if (editandoIndex !== null) {
-        ventas[editandoIndex] = ventaData;
-        editandoIndex = null;
-    } else {
-        ventas.push(ventaData);
-    }
-
-    guardarDatos();
-    mostrarVentas();
-    limpiarFormulario();
-
-    document.getElementById("mensaje").innerHTML =
-        "<span class='success'>✅ Venta guardada correctamente</span>";
-}
-
-function editarVenta(index) {
-    let v = ventas[index];
-
-    document.getElementById("descripcion").value = v.descripcion;
-    document.getElementById("precioUSA").value = v.precioUSA;
-    document.getElementById("precioVendido").value = v.precioVendido;
-    document.getElementById("abonado").value = v.abonado;
-
-    editandoIndex = index;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-/* ================= MOSTRAR VENTAS ================= */
-
-function mostrarVentas() {
-
-    let filtro = document.getElementById("filtroCliente").value;
-    let lista = document.getElementById("ventasLista");
-    lista.innerHTML = "";
-
-    let totalInvertido = 0;
-    let totalVendido = 0;
-    let totalGanancia = 0;
-
-    ventas.forEach((v, index) => {
-
-        if (filtro !== "todos" && v.cliente !== filtro) return;
-
-        totalInvertido += v.invertidoCRC;
-        totalVendido += v.precioVendido;
-        totalGanancia += v.ganancia;
-
-        lista.innerHTML += `
-        <div class="card">
-        <b>Cliente:</b> ${v.cliente}<br>
-        <b>Producto:</b> ${v.descripcion || "Sin descripción"}<br>
-        <b>Invertido:</b> ₡${v.invertidoCRC.toFixed(2)}<br>
-        <b>Vendido:</b> ₡${v.precioVendido.toFixed(2)}<br>
-        <b>Ganancia:</b> ₡${v.ganancia.toFixed(2)}<br>
-        <b>Abonado:</b> ₡${v.abonado.toFixed(2)}<br>
-        <b>Pendiente:</b> ₡${v.pendiente.toFixed(2)}<br>
-        <b>Estado:</b> ${v.estado}<br><br>
-        <button onclick="editarVenta(${index})">Editar</button>
-        <button onclick="borrarVentaSeleccionada(${index})">Borrar</button>
-        </div>
-        `;
-    });
-
-    document.getElementById("analisis").innerHTML = `
-    <div class="card">
-    <h3>📊 Análisis General</h3>
-    <b>Total Invertido:</b> ₡${totalInvertido.toFixed(2)}<br>
-    <b>Total Vendido:</b> ₡${totalVendido.toFixed(2)}<br>
-    <b>Ganancia Total:</b> ₡${totalGanancia.toFixed(2)}
+    document.getElementById("resultado").innerHTML = `
+    <div class="card info">
+    💰 Invertido: ₡${invertidoGlobal.toFixed(2)}<br>
+    🏷️ Precio Final: ₡${precioFinal.toFixed(2)}<br>
+    💵 Ganancia Real: ₡${gananciaReal.toFixed(2)}<br>
+    📊 Margen: ${margen.toFixed(2)}%<br>
+    🔒 50% para apartar: ₡${abono50.toFixed(2)}
     </div>
     `;
 }
 
-/* ================= BORRAR ================= */
+/* ================= GUARDAR VENTA ================= */
 
-function borrarVentaSeleccionada(index) {
-    if (confirm("¿Desea borrar esta venta?")) {
-        ventas.splice(index, 1);
-        guardarDatos();
-        mostrarVentas();
+function guardarVenta(){
+    let clienteIndex = document.getElementById("clienteSelect").value;
+    let descripcion = document.getElementById("descripcion").value.trim();
+    let precioUSA = parseFloat(document.getElementById("precioUSA").value);
+    let precioFinal = parseFloat(document.getElementById("precioFinal").value);
+
+    if(clienteIndex === "" || isNaN(clienteIndex) || !descripcion || isNaN(precioUSA) || isNaN(precioFinal)){
+        alert("Complete todos los datos antes de guardar la venta.");
+        console.error("Datos incompletos:", { clienteIndex, descripcion, precioUSA, precioFinal });
+        return;
     }
-}
 
-function borrarVentas() {
-    if (confirm("¿Borrar TODAS las ventas?")) {
-        ventas = [];
-        guardarDatos();
-        mostrarVentas();
-    }
-}
+    let ganancia = precioFinal - invertidoGlobal;
 
-/* ================= LIMPIAR ================= */
+    ventas.push({
+        cliente: clientes[clienteIndex].nombre,
+        descripcion,
+        invertido: invertidoGlobal,
+        precioFinal,
+        ganancia
+    });
 
-function limpiarFormulario() {
+    guardarDatos();
+    mostrarVentas();
+
+    // Limpiar los campos después de guardar la venta
     document.getElementById("descripcion").value = "";
     document.getElementById("precioUSA").value = "";
-    document.getElementById("precioVendido").value = "";
-    document.getElementById("abonado").value = "";
+    document.getElementById("precioFinal").value = "";
+
+    console.log("Venta guardada correctamente:", ventas[ventas.length - 1]);
+    alert("Venta guardada correctamente.");
 }
 
-/* ================= INIT ================= */
+/* ================= BORRAR VENTA ================= */
 
-cargarClientes();
-mostrarVentas();
+function borrarVenta(index) {
+    if (confirm("¿Está seguro de que desea borrar esta venta?")) {
+        ventas.splice(index, 1); // Eliminar la venta del array
+        guardarDatos(); // Guardar los cambios en localStorage
+        mostrarVentas(); // Actualizar la lista de ventas
+        alert("Venta borrada correctamente.");
+    }
+}
 
+/* ================= EDITAR ABONO ================= */
+
+function editarAbono(index) {
+    let nuevaAbono = parseFloat(prompt("Ingrese el nuevo abono (50% del precio final):"));
+
+    if (isNaN(nuevaAbono) || nuevaAbono <= 0) {
+        alert("Por favor, ingrese un valor válido para el abono.");
+        return;
+    }
+
+    let venta = ventas[index];
+    if (venta) {
+        venta.abono50 = nuevaAbono; // Actualizar el abono en la venta
+        guardarDatos(); // Guardar los cambios en localStorage
+        mostrarVentas(); // Actualizar la lista de ventas
+        alert("Abono actualizado correctamente.");
+    } else {
+        alert("No se encontró la venta para editar.");
+    }
+}
+
+/* ================= EDITAR VENTA ================= */
+
+function editarVenta(index) {
+    let nuevaAbono = parseFloat(prompt("Ingrese el nuevo abono (₡):"));
+    let nuevaFecha = prompt("Ingrese la nueva fecha (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+
+    if (isNaN(nuevaAbono) || nuevaAbono < 0) {
+        alert("Por favor, ingrese un valor válido para el abono.");
+        return;
+    }
+
+    if (!/\d{4}-\d{2}-\d{2}/.test(nuevaFecha)) {
+        alert("Por favor, ingrese una fecha válida en el formato YYYY-MM-DD.");
+        return;
+    }
+
+    let venta = ventas[index];
+    if (venta) {
+        venta.abono50 = nuevaAbono; // Actualizar el abono en la venta
+        venta.fecha = nuevaFecha; // Actualizar la fecha en la venta
+        guardarDatos(); // Guardar los cambios en localStorage
+        mostrarVentas(); // Actualizar la lista de ventas
+        alert("Venta actualizada correctamente.");
+    } else {
+        alert("No se encontró la venta para editar.");
+    }
+}
+
+/* ================= MOSTRAR VENTAS ================= */
+
+function mostrarVentas(){
+    let lista = document.getElementById("ventasLista");
+    lista.innerHTML = ""; // Limpiar la lista antes de renderizar
+
+    ventas = JSON.parse(localStorage.getItem("ventas")) || []; // Asegurarse de cargar los datos actualizados
+    console.log("Ventas cargadas:", ventas);
+
+    if (ventas.length === 0) {
+        lista.innerHTML = `<div class="card">No hay ventas registradas.</div>`;
+        document.getElementById("resumen").innerHTML = "";
+        return;
+    }
+
+    // Agrupar ventas por cliente
+    let ventasPorCliente = {};
+    ventas.forEach((v) => {
+        if (!ventasPorCliente[v.cliente]) {
+            ventasPorCliente[v.cliente] = {
+                totalComprado: 0,
+                totalAbonado: 0,
+                totalPendiente: 0,
+                compras: []
+            };
+        }
+
+        let precioFinal = parseFloat(v.precioFinal) || 0;
+        let abono = parseFloat(v.abono50) || 0; // Los abonos siempre inician en 0
+        let sugeridoAbono = precioFinal * 0.5; // Mostrar el 50% como sugerencia
+        let saldoPendiente = precioFinal - abono;
+
+        ventasPorCliente[v.cliente].totalComprado += precioFinal;
+        ventasPorCliente[v.cliente].totalAbonado += abono;
+        ventasPorCliente[v.cliente].totalPendiente += saldoPendiente;
+        ventasPorCliente[v.cliente].compras.push({ ...v, sugeridoAbono });
+    });
+
+    // Mostrar ventas agrupadas por cliente
+    for (let cliente in ventasPorCliente) {
+        let clienteData = ventasPorCliente[cliente];
+
+        lista.innerHTML += `
+        <div class="card">
+        <h3>Cliente: ${cliente}</h3>
+        <b>Total Comprado:</b> ₡${clienteData.totalComprado.toFixed(2)}<br>
+        <b>Total Abonado:</b> ₡${clienteData.totalAbonado.toFixed(2)}<br>
+        <b>Total Pendiente:</b> ₡${clienteData.totalPendiente.toFixed(2)}<br>
+        <hr>
+        <h4>Detalle de Compras:</h4>
+        `;
+
+        clienteData.compras.forEach((v) => {
+            let precioFinal = parseFloat(v.precioFinal) || 0;
+            let abono = parseFloat(v.abono50) || 0; // Los abonos siempre inician en 0
+            let sugeridoAbono = v.sugeridoAbono || (precioFinal * 0.5);
+            let saldoPendiente = precioFinal - abono;
+
+            lista.innerHTML += `
+            <div class="card">
+            <b>Producto:</b> ${v.descripcion || "Sin descripción"}<br>
+            <b>Invertido:</b> ₡${(parseFloat(v.invertido) || 0).toFixed(2)}<br>
+            <b>Precio Final:</b> ₡${precioFinal.toFixed(2)}<br>
+            <b>Ganancia:</b> ₡${(parseFloat(v.ganancia) || 0).toFixed(2)}<br>
+            <b>Abono:</b> ₡${abono.toFixed(2)}<br>
+            <b>Saldo Pendiente:</b> ₡${saldoPendiente.toFixed(2)}<br>
+            <b>Abono Sugerido (50%):</b> ₡${sugeridoAbono.toFixed(2)}<br>
+            <b>Fecha:</b> ${v.fecha || "Sin fecha"}<br>
+            <button onclick="borrarVenta(${ventas.indexOf(v)})">🗑️ Borrar</button>
+            <button onclick="editarVenta(${ventas.indexOf(v)})">✏️ Editar</button>
+            </div>
+            `;
+        });
+
+        lista.innerHTML += `</div>`;
+    }
+
+    document.getElementById("resumen").innerHTML = ""; // Limpiar el resumen global
+}
+
+// Asegurarse de que el código se ejecute después de que el DOM esté completamente cargado
+window.onload = function() {
+    window.agregarCliente = agregarCliente;
+    window.cargarClientes = cargarClientes;
+    window.calcularBase = calcularBase;
+    window.recalcularFinal = recalcularFinal;
+    window.guardarVenta = guardarVenta;
+    window.mostrarVentas = mostrarVentas;
+
+    // Inicializar clientes y ventas al cargar la página
+    cargarClientes();
+    mostrarVentas();
+};
 </script>
-
-</body>
-</html>

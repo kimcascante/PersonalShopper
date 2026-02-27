@@ -229,9 +229,15 @@ function borrarVenta(index) {
 /* ================= EDITAR ABONO ================= */
 
 function editarAbono(index) {
-    let nuevaAbono = parseFloat(prompt("Ingrese el nuevo abono (50% del precio final):"));
+    if (index < 0 || index >= ventas.length) {
+        alert("El índice de la venta es inválido.");
+        console.error("Índice inválido para editar abono:", index);
+        return;
+    }
 
-    if (isNaN(nuevaAbono) || nuevaAbono <= 0) {
+    let nuevaAbono = parseFloat(prompt("Ingrese el nuevo abono (₡):"));
+
+    if (isNaN(nuevaAbono) || nuevaAbono < 0) {
         alert("Por favor, ingrese un valor válido para el abono.");
         return;
     }
@@ -244,6 +250,7 @@ function editarAbono(index) {
         alert("Abono actualizado correctamente.");
     } else {
         alert("No se encontró la venta para editar.");
+        console.error("Venta no encontrada para el índice:", index);
     }
 }
 
@@ -292,7 +299,7 @@ function mostrarVentas(){
 
     // Agrupar ventas por cliente
     let ventasPorCliente = {};
-    ventas.forEach((v) => {
+    ventas.forEach((v, index) => {
         if (!ventasPorCliente[v.cliente]) {
             ventasPorCliente[v.cliente] = {
                 totalComprado: 0,
@@ -310,7 +317,7 @@ function mostrarVentas(){
         ventasPorCliente[v.cliente].totalComprado += precioFinal;
         ventasPorCliente[v.cliente].totalAbonado += abono;
         ventasPorCliente[v.cliente].totalPendiente += saldoPendiente;
-        ventasPorCliente[v.cliente].compras.push({ ...v, sugeridoAbono });
+        ventasPorCliente[v.cliente].compras.push({ ...v, sugeridoAbono, index });
     });
 
     // Mostrar ventas agrupadas por cliente
@@ -343,8 +350,8 @@ function mostrarVentas(){
             <b>Saldo Pendiente:</b> ₡${saldoPendiente.toFixed(2)}<br>
             <b>Abono Sugerido (50%):</b> ₡${sugeridoAbono.toFixed(2)}<br>
             <b>Fecha:</b> ${v.fecha || "Sin fecha"}<br>
-            <button onclick="borrarVenta(${ventas.indexOf(v)})">🗑️ Borrar</button>
-            <button onclick="editarVenta(${ventas.indexOf(v)})">✏️ Editar</button>
+            <button onclick="borrarVenta(${v.index})">🗑️ Borrar</button>
+            <button onclick="editarAbono(${v.index})">✏️ Editar</button>
             </div>
             `;
         });
